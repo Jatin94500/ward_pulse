@@ -11,7 +11,9 @@ import {
   Check, 
   Sparkles,
   ArrowRight,
-  Database
+  Database,
+  IndianRupee,
+  HardHat
 } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
@@ -88,6 +90,28 @@ export default function EvaluationPlayground({ wards = [] }) {
       const targetWard = wards.find(w => w.ward_id === selectedWardId) || { name: 'Target Ward', population_num: 50000 };
       const pop = targetWard.population_num || 50000;
       const cnt = Math.round(pop * 0.0009 * 10) / 10;
+      
+      const costPerCat = {
+        solid_waste: 650,
+        electrical: 1200,
+        roads: 4500,
+        trees: 1800,
+        animals_health: 950,
+        other: 800
+      };
+      const workersPerCat = {
+        solid_waste: 14,
+        electrical: 15,
+        roads: 8,
+        trees: 6,
+        animals_health: 10,
+        other: 12
+      };
+      const unitCost = costPerCat[category] || 1000;
+      const workerCap = workersPerCat[category] || 10;
+      const costInr = Math.round(cnt * unitCost);
+      const personnel = Math.max(1, Math.ceil(cnt / workerCap));
+
       setResult({
         success: true,
         latency: elapsed + 8,
@@ -99,7 +123,9 @@ export default function EvaluationPlayground({ wards = [] }) {
           predicted_count: cnt,
           pred_rate_per_1000: Math.round((cnt / (pop / 1000)) * 1000) / 1000,
           uncertainty_pct: 5.4,
-          explanation: `Ensemble inference for zero-history ward #${selectedWardId} computed from census demographics & physical road/lighting density.`
+          estimated_cost_inr: costInr,
+          personnel_required: personnel,
+          explanation: `Ensemble inference for zero-history ward #${selectedWardId} computed from census demographics & physical road/lighting density. Estimated resolution budget: ₹${costInr.toLocaleString('en-IN')} with ${personnel} field personnel required.`
         }
       });
     } finally {
@@ -383,7 +409,8 @@ export default function EvaluationPlayground({ wards = [] }) {
 
           {result.success ? (
             <div className="space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                {/* 1. Demand Count */}
                 <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Forecast Count</span>
                   <div className="text-xl font-extrabold text-orange-400 font-mono mt-0.5">
@@ -392,6 +419,7 @@ export default function EvaluationPlayground({ wards = [] }) {
                   <span className="text-[10px] text-slate-500">complaints / mo</span>
                 </div>
 
+                {/* 2. Rate per 1000 */}
                 <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Rate per 1,000</span>
                   <div className="text-xl font-extrabold text-white font-mono mt-0.5">
@@ -400,17 +428,47 @@ export default function EvaluationPlayground({ wards = [] }) {
                   <span className="text-[10px] text-slate-500">rate per 1k residents</span>
                 </div>
 
+                {/* 3. Cost Prediction (INR) */}
+                <div className="p-3 rounded-lg bg-slate-900 border border-emerald-900/50 bg-emerald-950/10">
+                  <span className="text-[10px] text-emerald-400 uppercase font-semibold block flex items-center gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    Est. Cost
+                  </span>
+                  <div className="text-xl font-extrabold text-emerald-400 font-mono mt-0.5">
+                    ₹{result.data.estimated_cost_inr 
+                      ? (result.data.estimated_cost_inr >= 100000 
+                          ? `${(result.data.estimated_cost_inr / 100000).toFixed(2)}L` 
+                          : `${Math.round(result.data.estimated_cost_inr).toLocaleString('en-IN')}`)
+                      : 'N/A'}
+                  </div>
+                  <span className="text-[10px] text-slate-500">resolution budget</span>
+                </div>
+
+                {/* 4. Personnel Required */}
+                <div className="p-3 rounded-lg bg-slate-900 border border-blue-900/50 bg-blue-950/10">
+                  <span className="text-[10px] text-blue-400 uppercase font-semibold block flex items-center gap-1">
+                    <HardHat className="h-3 w-3" />
+                    Workforce
+                  </span>
+                  <div className="text-xl font-extrabold text-blue-400 font-mono mt-0.5">
+                    {result.data.personnel_required || 1}
+                  </div>
+                  <span className="text-[10px] text-slate-500">field personnel</span>
+                </div>
+
+                {/* 5. Uncertainty */}
                 <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Uncertainty</span>
-                  <div className="text-xl font-extrabold text-emerald-400 font-mono mt-0.5">
+                  <div className="text-xl font-extrabold text-cyan-400 font-mono mt-0.5">
                     ±{result.data.uncertainty_pct || 5.4}%
                   </div>
                   <span className="text-[10px] text-slate-500">cross-seed variance</span>
                 </div>
 
+                {/* 6. Category */}
                 <div className="p-3 rounded-lg bg-slate-900 border border-slate-800">
                   <span className="text-[10px] text-slate-400 uppercase font-semibold block">Category</span>
-                  <div className="text-sm font-bold text-slate-200 mt-1 capitalize">
+                  <div className="text-xs font-bold text-slate-200 mt-1 capitalize truncate">
                     {result.data.category_group.replace('_', ' ')}
                   </div>
                   <span className="text-[10px] text-slate-500">{result.data.month}</span>

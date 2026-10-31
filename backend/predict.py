@@ -16,6 +16,26 @@ from backend.config import (
 
 logger = logging.getLogger("ward_pulse.predict")
 
+# Municipal operational resolution costs (INR per complaint) based on BBMP civic norms
+MUNICIPAL_COST_PER_COMPLAINT = {
+    "solid_waste": 650.0,      # Collection, tipper transport, segregation & processing
+    "electrical": 1200.0,      # Lineman labor, luminaire/fixture repair, wire splicing
+    "roads": 4500.0,           # Cold/hot asphalt pothole repair, compaction & road gang
+    "trees": 1800.0,           # Hydraulic pruning crane, chainsaw crew & debris transit
+    "animals_health": 950.0,   # ABC surgery, anti-rabies vaccination & vehicle transit
+    "other": 800.0             # Stormwater drain clearing & general civic maintenance
+}
+
+# Average monthly complaints handled per dedicated field worker / technician
+COMPLAINTS_PER_WORKER_PER_MONTH = {
+    "solid_waste": 14,         # Sanitation workers / pourakarmikas
+    "electrical": 15,          # Wiremen & linemen
+    "roads": 8,                # Pothole repair gang members
+    "trees": 6,                # Horticulture pruning specialists
+    "animals_health": 10,      # Animal welfare handlers & vet assistants
+    "other": 12                # General municipal field maintenance
+}
+
 class ModelService:
     def __init__(self):
         self.ward_features: Optional[pd.DataFrame] = None
@@ -81,6 +101,10 @@ class ModelService:
         Runs prediction for ward_id, month, category_group.
         Uses 5-seed LightGBM ensemble with uncertainty estimation.
         """
+        # Calculate municipal cost & workforce
+        cost_unit = MUNICIPAL_COST_PER_COMPLAINT.get(category_group, 1000.0)
+        worker_cap = COMPLAINTS_PER_WORKER_PER_MONTH.get(category_group, 10)
+
         # Check precomputed submission first
         if self.submission_df is not None:
             sub_match = self.submission_df[
@@ -102,7 +126,9 @@ class ModelService:
                     "category_group": category_group,
                     "predicted_count": round(count, 2),
                     "pred_rate_per_1000": round(rate, 4),
-                    "uncertainty_pct": 5.4
+                    "uncertainty_pct": 5.4,
+                    "estimated_cost_inr": round(count * cost_unit, 2),
+                    "personnel_required": max(1, int(np.ceil(count / float(worker_cap))))
                 }
 
         # Dynamic inference with 5-seed model ensemble
@@ -135,7 +161,9 @@ class ModelService:
                     "category_group": category_group,
                     "predicted_count": round(count, 2),
                     "pred_rate_per_1000": round(mean_rate, 4),
-                    "uncertainty_pct": round(min(unc, 100.0), 2)
+                    "uncertainty_pct": round(min(unc, 100.0), 2),
+                    "estimated_cost_inr": round(count * cost_unit, 2),
+                    "personnel_required": max(1, int(np.ceil(count / float(worker_cap))))
                 }
 
         # Fallback baseline estimate
@@ -146,7 +174,9 @@ class ModelService:
             "category_group": category_group,
             "predicted_count": round(count, 2),
             "pred_rate_per_1000": round(count / (pop / 1000.0), 4),
-            "uncertainty_pct": 8.5
+            "uncertainty_pct": 8.5,
+            "estimated_cost_inr": round(count * cost_unit, 2),
+            "personnel_required": max(1, int(np.ceil(count / float(worker_cap))))
         }
 
     def predict_batch(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -166,14 +196,24 @@ class ModelService:
         ward_data = row.iloc[0].to_dict()
         categories = self.categories or ["solid_waste", "roads", "electrical", "trees", "animals_health", "other"]
         
-        # Calculate category breakdown
+        # Calculate category breakdown & municipal resource requirements
         breakdown = {}
+        cost_breakdown = {}
+        workforce_breakdown = {}
         total = 0.0
+        total_cost = 0.0
+        total_workforce = 0
         for cat in categories:
             pred = self.predict_single(ward_id, "2024-06", cat)
             cnt = pred["predicted_count"]
+            cost = pred["estimated_cost_inr"]
+            workers = pred["personnel_required"]
             breakdown[cat] = cnt
+            cost_breakdown[cat] = cost
+            workforce_breakdown[cat] = workers
             total += cnt
+            total_cost += cost
+            total_workforce += workers
 
         return {
             "ward": {
@@ -188,7 +228,13 @@ class ModelService:
             },
             "category_breakdown": breakdown,
             "predicted_demand_total": round(total, 2),
-            "uncertainty_pct": 6.2
+            "uncertainty_pct": 6.2,
+            "resource_allocation": {
+                "total_cost_inr": round(total_cost, 2),
+                "total_workforce_required": int(total_workforce),
+                "cost_breakdown": cost_breakdown,
+                "workforce_breakdown": workforce_breakdown
+            }
         }
 
     def predict_custom_ward(self, req: Dict[str, Any]) -> Dict[str, Any]:
@@ -237,6 +283,9 @@ class ModelService:
         predicted_count = max(1.0, pred_rate * (pop / 1000.0))
         uncertainty = 6.5 + (0.5 if len(self.models) > 0 else 2.5)
 
+        cost_unit = MUNICIPAL_COST_PER_COMPLAINT.get(category, 1000.0)
+        worker_cap = COMPLAINTS_PER_WORKER_PER_MONTH.get(category, 10)
+
         return {
             "ward_name": req.get("ward_name", "Unknown Custom Ward"),
             "zone_name": zone,
@@ -246,6 +295,8 @@ class ModelService:
             "predicted_count": round(predicted_count, 2),
             "pred_rate_per_1000": round(pred_rate, 4),
             "uncertainty_pct": round(uncertainty, 2),
+            "estimated_cost_inr": round(predicted_count * cost_unit, 2),
+            "personnel_required": max(1, int(np.ceil(predicted_count / float(worker_cap)))),
             "features_used": {
                 "population_density_per_sq_km": round(density, 1),
                 "roads_per_sqkm": round(roads_per_sqkm, 2),
@@ -253,7 +304,7 @@ class ModelService:
                 "lights_per_1000pop": round(lights_per_1000, 2),
                 "average_hh_size": round(hh_size, 2)
             },
-            "explanation": f"Forecast calculated via zero-history geospatial feature synthesis: {density:.0f} persons/km² density, {roads:.1f}km roads, {lights:.0f} streetlights mapped to '{category}' model weights."
+            "explanation": f"Forecast calculated via zero-history geospatial feature synthesis: {density:.0f} persons/km² density, {roads:.1f}km roads, {lights:.0f} streetlights mapped to '{category}' model weights. Estimated resolution cost: INR {round(predicted_count * cost_unit):,} requiring {max(1, int(np.ceil(predicted_count / float(worker_cap))))} field personnel."
         }
 
     def get_top_wards(self, category_group: str = "solid_waste", month: str = "2024-06", limit: int = 10) -> List[Dict[str, Any]]:

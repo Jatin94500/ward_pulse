@@ -16,6 +16,8 @@ class PredictionOutput(BaseModel):
     predicted_count: float
     pred_rate_per_1000: float
     uncertainty_pct: Optional[float] = None
+    estimated_cost_inr: Optional[float] = Field(None, description="Estimated monthly complaint resolution cost in INR")
+    personnel_required: Optional[int] = Field(None, description="Estimated field workers/crew required for resolution")
 
 class PredictionBatchResponse(BaseModel):
     total_records: int
@@ -32,11 +34,18 @@ class WardInfo(BaseModel):
     streetlights: Optional[int] = None
     has_history: bool
 
+class MunicipalResourceAllocation(BaseModel):
+    total_cost_inr: float
+    total_workforce_required: int
+    cost_breakdown: Dict[str, float]
+    workforce_breakdown: Dict[str, int]
+
 class WardDetailResponse(BaseModel):
     ward: WardInfo
     category_breakdown: Dict[str, float]
     predicted_demand_total: float
     uncertainty_pct: float
+    resource_allocation: Optional[MunicipalResourceAllocation] = None
 
 class MetaResponse(BaseModel):
     title: str
@@ -70,6 +79,8 @@ class CustomWardResponse(BaseModel):
     predicted_count: float
     pred_rate_per_1000: float
     uncertainty_pct: float
+    estimated_cost_inr: float
+    personnel_required: int
     features_used: Dict[str, Any]
     explanation: str
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, PieChart, Zap, Trash2, Car, Trees, HeartPulse, HelpCircle } from 'lucide-react';
+import { BarChart3, PieChart, Zap, Trash2, Car, Trees, HeartPulse, HelpCircle, IndianRupee, HardHat } from 'lucide-react';
 
 export default function Charts({ wards = [], selectedWard, onSelectWard }) {
   // Sort wards by demand
@@ -25,6 +25,28 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
   const b = current.breakdown || {};
   const total = current.totalDemand || current.predictedDemand || Object.values(b).reduce((acc, v) => acc + (Number(v) || 0), 0) || 1;
 
+  // Cost and workforce benchmarks
+  const COST_PER_COMPLAINT = {
+    solid_waste: 650,
+    electrical: 1200,
+    roads: 4500,
+    trees: 1800,
+    animals_health: 950,
+    other: 800
+  };
+
+  const WORKERS_CAP = {
+    solid_waste: 14,
+    electrical: 15,
+    roads: 8,
+    trees: 6,
+    animals_health: 10,
+    other: 12
+  };
+
+  let totalCost = 0;
+  let totalPersonnel = 0;
+
   // Actual Hackathon Problem 03 Complaint Categories
   const categories = [
     { label: 'Solid Waste', key: 'solid_waste', count: b.solid_waste || 0, color: 'bg-emerald-500', icon: Trash2 },
@@ -33,7 +55,19 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
     { label: 'Trees', key: 'trees', count: b.trees || 0, color: 'bg-green-600', icon: Trees },
     { label: 'Animal Health', key: 'animals_health', count: b.animals_health || 0, color: 'bg-rose-500', icon: HeartPulse },
     { label: 'Other Issues', key: 'other', count: b.other || 0, color: 'bg-purple-500', icon: HelpCircle },
-  ];
+  ].map((c) => {
+    const costUnit = COST_PER_COMPLAINT[c.key] || 1000;
+    const cap = WORKERS_CAP[c.key] || 10;
+    const catCost = Math.round(c.count * costUnit);
+    const catWorkers = c.count > 0 ? Math.max(1, Math.ceil(c.count / cap)) : 0;
+    totalCost += catCost;
+    totalPersonnel += catWorkers;
+    return {
+      ...c,
+      cost: catCost,
+      workers: catWorkers
+    };
+  });
 
   return (
     <div className="space-y-4">
@@ -96,10 +130,28 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
           </span>
         </div>
 
-        {/* Total & Status Bar */}
-        <div className="flex items-center justify-between text-xs px-2 py-1.5 bg-gray-50 rounded-lg">
-          <span className="text-gray-500">Total Predicted Complaints:</span>
-          <span className="font-bold text-orange-600 font-mono text-sm">{Math.round(total)}</span>
+        {/* Total, Cost & Workforce Status Summary Bar */}
+        <div className="grid grid-cols-3 gap-1.5 text-[11px] p-2 bg-gray-50 rounded-lg">
+          <div>
+            <span className="text-[10px] text-gray-400 block font-medium">Predicted Cases</span>
+            <span className="font-bold text-orange-600 font-mono">{Math.round(total)}</span>
+          </div>
+          <div className="border-l border-gray-200 pl-1.5">
+            <span className="text-[10px] text-gray-400 block font-medium flex items-center gap-0.5">
+              <IndianRupee className="h-2.5 w-2.5 text-emerald-600" />
+              Est. Budget
+            </span>
+            <span className="font-bold text-emerald-600 font-mono">
+              {totalCost >= 100000 ? `₹${(totalCost / 100000).toFixed(1)}L` : `₹${Math.round(totalCost / 1000)}k`}
+            </span>
+          </div>
+          <div className="border-l border-gray-200 pl-1.5">
+            <span className="text-[10px] text-gray-400 block font-medium flex items-center gap-0.5">
+              <HardHat className="h-2.5 w-2.5 text-blue-600" />
+              Field Staff
+            </span>
+            <span className="font-bold text-blue-600 font-mono">{totalPersonnel}</span>
+          </div>
         </div>
 
         <div className="space-y-2 pt-1">
@@ -115,9 +167,14 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
                     <Icon className="h-3 w-3 text-gray-400" />
                     <span>{cat.label}</span>
                   </span>
-                  <span className="font-semibold text-gray-800 font-mono">
-                    {count} <span className="text-[10px] text-gray-400 font-normal">({pct}%)</span>
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-emerald-700 font-medium">
+                      ₹{Math.round(cat.cost / 1000)}k
+                    </span>
+                    <span className="font-semibold text-gray-800 font-mono">
+                      {count} <span className="text-[10px] text-gray-400 font-normal">({pct}%)</span>
+                    </span>
+                  </div>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                   <div className={`h-1.5 rounded-full ${cat.color}`} style={{ width: `${Math.min(pct, 100)}%` }} />

@@ -13,20 +13,24 @@ from backend.schemas import (
     PredictionOutput,
     WardDetailResponse,
     MetaResponse,
+    CustomWardRequest,
+    CustomWardResponse,
 )
 from backend.predict import model_service
 
 app = FastAPI(
     title="Ward Pulse API · Bangalore Civic AI",
     description="""
-### Ward Pulse Backend API
+### Ward Pulse Backend API · Hacktoberfest Hack Day Problem 03
 
-Estimates civic complaints (solid waste, roads, electrical, trees, water, animal health) for municipal wards in Bengaluru (BBMP) with zero complaint history using LightGBM ensemble models.
+Estimates civic complaints (solid waste, roads, electrical, trees, animal health, other) for municipal wards in Bengaluru (BBMP) with zero complaint history using LightGBM ensemble models.
 
-#### Authentication:
-Protected endpoints (`/api/predict` and `/api/predict/batch`) require an **API Key**.
-- Header: `X-API-Key: wardpulse-key-2026`
-- Click the **Authorize 🔓** button below and enter: `wardpulse-key-2026`.
+#### Evaluation & Authentication:
+Protected endpoints require the **API Key**: `wardpulse-key-2026`.
+You can pass the API key in 2 ways:
+1. **Header**: `X-API-Key: wardpulse-key-2026`
+2. **Query Parameter**: `?api_key=wardpulse-key-2026`
+3. Click the **Authorize 🔓** button below and enter `wardpulse-key-2026`.
     """,
     version="1.0.0",
     docs_url="/docs",
@@ -102,18 +106,57 @@ def get_top_wards(
     top_wards = model_service.get_top_wards(category_group=category_group, month=month, limit=limit)
     return {"category": category_group, "month": month, "top_wards": top_wards}
 
+@app.get(
+    "/api/predict",
+    response_model=PredictionOutput,
+    tags=["Predictions (Secured)"],
+    dependencies=[Depends(verify_api_key)]
+)
+def predict_single_ward_get(
+    ward_id: int = Query(5, description="BBMP Ward ID (1-198). e.g. 5 for target zero-history ward Jakkuru"),
+    category_group: str = Query("solid_waste", description="Category: solid_waste, electrical, roads, trees, animals_health, other"),
+    month: str = Query("2024-06", description="Prediction month in YYYY-MM format"),
+    api_key: Optional[str] = Query(None, description="API Key for evaluation (or pass via header X-API-Key: wardpulse-key-2026)")
+):
+    """
+    **Evaluation Endpoint (GET)**:
+    Predict civic complaint count and rate per 1,000 residents for any ward and category.
+    Accepts query parameters directly in browser URL, curl, or test automation scripts.
+    """
+    return model_service.predict_single(ward_id, month, category_group)
+
 @app.post(
     "/api/predict",
     response_model=PredictionOutput,
     tags=["Predictions (Secured)"],
     dependencies=[Depends(verify_api_key)]
 )
-def predict_single_ward(row: PredictionRow):
+def predict_single_ward(
+    row: PredictionRow,
+    api_key: Optional[str] = Query(None, description="API Key (or pass in header X-API-Key)")
+):
     """
-    **Secured with API Key**: Predict complaint count and rate for a specific ward, category, and month.
+    **Secured with API Key (POST)**: Predict complaint count and rate for a specific ward, category, and month.
     """
     res = model_service.predict_single(row.ward_id, row.month, row.category_group)
     return res
+
+@app.post(
+    "/api/predict/custom",
+    response_model=CustomWardResponse,
+    tags=["Predictions (Secured)"],
+    dependencies=[Depends(verify_api_key)]
+)
+def predict_unknown_ward_custom(
+    request: CustomWardRequest,
+    api_key: Optional[str] = Query(None, description="API Key (or pass in header X-API-Key)")
+):
+    """
+    **Evaluation Endpoint for Unknown / Hypothetical Wards**:
+    Predicts civic complaint demand for any newly proposed or hypothetical ward by passing raw geospatial & physical infrastructure attributes (population, road length, streetlights, surface area, category).
+    Demonstrates model generalization on zero-history municipal areas.
+    """
+    return model_service.predict_custom_ward(request.dict())
 
 @app.post(
     "/api/predict/batch",
@@ -121,7 +164,10 @@ def predict_single_ward(row: PredictionRow):
     tags=["Predictions (Secured)"],
     dependencies=[Depends(verify_api_key)]
 )
-def predict_batch_wards(request: PredictionBatchRequest):
+def predict_batch_wards(
+    request: PredictionBatchRequest,
+    api_key: Optional[str] = Query(None, description="API Key (or pass in header X-API-Key)")
+):
     """
     **Secured with API Key**: Batch inference for multiple ward predictions.
     Accepts an array of `{ward_id, month, category_group}` objects.

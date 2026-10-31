@@ -3,12 +3,21 @@ import { BarChart3, PieChart, Zap, Trash2, Car, Trees, HeartPulse, HelpCircle } 
 
 export default function Charts({ wards = [], selectedWard, onSelectWard }) {
   // Sort wards by demand
-  const topWards = [...wards]
-    .sort((a, b) => (b.predictedDemand || b.totalDemand || 0) - (a.predictedDemand || a.totalDemand || 0))
-    .slice(0, 5);
+  const sortedWards = [...wards].sort(
+    (a, b) => (b.predictedDemand || b.totalDemand || 0) - (a.predictedDemand || a.totalDemand || 0)
+  );
 
-  const maxDemand = topWards.length > 0 
-    ? Math.max(...topWards.map(w => w.predictedDemand || w.totalDemand || 1)) 
+  // Take top 5 wards by demand
+  const topWards = sortedWards.slice(0, 5);
+
+  // Ensure selectedWard is in the display list if it's not in top 5
+  let displayWards = [...topWards];
+  if (selectedWard && !topWards.some((w) => w.ward_id === selectedWard.ward_id)) {
+    displayWards = [...topWards.slice(0, 4), selectedWard];
+  }
+
+  const maxDemand = displayWards.length > 0 
+    ? Math.max(...displayWards.map(w => w.predictedDemand || w.totalDemand || 1)) 
     : 100;
 
   // Selected ward breakdown
@@ -28,18 +37,18 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
 
   return (
     <div className="space-y-4">
-      {/* Ward Comparison Bar Chart */}
+      {/* Demand by Ward Bar Chart */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between border-b border-gray-100 pb-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             <BarChart3 className="h-4 w-4 text-orange-600" />
-            <span>Demand Ranking</span>
+            <span>Demand by Ward</span>
           </div>
-          <span className="text-[10px] text-gray-400">Monthly Est.</span>
+          <span className="text-[10px] text-gray-400 font-medium">Recent Demands (Monthly Est.)</span>
         </div>
 
         <div className="space-y-2 pt-1">
-          {topWards.map((w) => {
+          {displayWards.map((w) => {
             const isSelected = selectedWard?.ward_id === w.ward_id || selectedWard?.id === w.id;
             const demand = w.predictedDemand || Math.round(w.totalDemand || 0);
             const pct = Math.round((demand / maxDemand) * 100);
@@ -49,15 +58,17 @@ export default function Charts({ wards = [], selectedWard, onSelectWard }) {
                 key={w.ward_id || w.id}
                 type="button"
                 onClick={() => onSelectWard && onSelectWard(w)}
-                className={`w-full text-left text-xs p-1 rounded-lg transition-colors ${
+                className={`w-full text-left text-xs p-1.5 rounded-lg transition-colors ${
                   isSelected ? 'bg-orange-50/80 ring-1 ring-orange-400' : 'hover:bg-gray-50'
                 }`}
               >
                 <div className="flex justify-between items-center mb-1">
                   <span className={`truncate ${isSelected ? 'text-orange-600 font-bold' : 'text-gray-700 font-medium'}`}>
-                    {w.name} <span className="text-[10px] text-gray-400">({w.zone})</span>
+                    #{w.ward_id} {w.name} <span className="text-[10px] text-gray-400 font-normal">({w.zone})</span>
                   </span>
-                  <span className="font-mono text-gray-900 font-semibold text-[11px] ml-1">{demand}</span>
+                  <span className={`font-mono font-semibold text-[11px] ml-1 ${isSelected ? 'text-orange-600' : 'text-gray-900'}`}>
+                    {demand}
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                   <div

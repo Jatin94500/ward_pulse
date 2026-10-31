@@ -3,6 +3,7 @@ import Header from './components/Header';
 import Map from './components/Map';
 import Filter from './components/Filter';
 import Charts from './components/Charts';
+import WardStats from './components/WardStats';
 import { Layers } from 'lucide-react';
 
 export default function App() {
@@ -60,7 +61,6 @@ export default function App() {
   }, [allWards, searchQuery, selectedZone, zeroHistoryOnly]);
 
   const handleSelectWard = (ward) => {
-    // If partial object passed, find full ward from allWards
     const fullWard = allWards.find((w) => w.ward_id === ward.ward_id) || ward;
     setSelectedWard(fullWard);
   };
@@ -72,17 +72,18 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-900">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-900 pb-12">
       {/* Header with requested Playfair Display & Zeyada fonts */}
       <Header />
 
-      {/* Main 70% Left / 30% Right Layout */}
-      <main className="flex-1 max-w-[1700px] w-full mx-auto p-4 md:p-6">
-        <div className="flex flex-col lg:flex-row gap-6 items-stretch h-[calc(100vh-120px)] min-h-[700px]">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-[1700px] w-full mx-auto p-4 md:p-6 space-y-6">
+        {/* Top 70% Left Map / 30% Right Panel */}
+        <div className="flex flex-col lg:flex-row gap-6 items-stretch min-h-[640px]">
           
           {/* Left Side: 70% Card with Bangalore Map */}
           <section className="w-full lg:w-[70%] flex flex-col">
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col h-full">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col h-full min-h-[580px]">
               {/* Card Title & Info Header */}
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -140,6 +141,13 @@ export default function App() {
           </aside>
 
         </div>
+
+        {/* New Section: Statistical Data of Particular Selected Ward */}
+        <WardStats
+          wards={allWards}
+          selectedWard={selectedWard}
+          onSelectWard={handleSelectWard}
+        />
       </main>
     </div>
   );

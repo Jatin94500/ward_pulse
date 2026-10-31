@@ -1,8 +1,6 @@
 # Ward Pulse - Civic Demand & Complaint Prediction Platform
 
-Mermaid diagrams and system architecture for the project. They render natively on GitHub, GitLab, VS Code, and https://mermaid.live.
 
-## 1. End-to-end pipeline
 
 ```mermaid
 flowchart LR

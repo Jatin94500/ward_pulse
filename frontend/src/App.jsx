@@ -161,10 +161,33 @@ const BANGALORE_WARDS = [
 const ALL_ZONES = ['East', 'South', 'West', 'Mahadevapura', 'Bommanahalli', 'Yelahanka'];
 
 function App() {
-  const [selectedWard, setSelectedWard] = useState(BANGALORE_WARDS[2]); // Default Whitefield
+  const [selectedWard, setSelectedWard] = useState({
+    ...BANGALORE_WARDS[2],
+    ward_id: BANGALORE_WARDS[2].wardNo
+  });
   const [selectedZone, setSelectedZone] = useState('All');
   const [zeroHistoryOnly, setZeroHistoryOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSelectWard = (ward) => {
+    const matched = BANGALORE_WARDS.find(w => w.wardNo === ward.ward_id || w.id === ward.id);
+    if (matched) {
+      setSelectedWard({ ...matched, ward_id: matched.wardNo });
+    } else {
+      setSelectedWard({
+        id: `BBMP-${ward.ward_id}`,
+        ward_id: ward.ward_id,
+        name: `BBMP Ward #${ward.ward_id}`,
+        zone: 'BBMP Jurisdiction',
+        predictedDemand: 185,
+        roads: 55,
+        garbage: 70,
+        water: 35,
+        streetlights: 20,
+        history: 'None (Unrecorded)'
+      });
+    }
+  };
 
   // Filtered wards based on search, zone, and zero-history
   const filteredWards = useMemo(() => {
@@ -202,24 +225,23 @@ function App() {
                     <Layers className="h-4 w-4" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-gray-900 m-0">Bangalore Geospatial Map</h2>
+                    <h2 className="text-base font-bold text-gray-900 m-0">Bangalore BBMP Wards Map</h2>
                     <p className="text-xs text-gray-500">
-                      Showing {filteredWards.length} wards in Bengaluru (BBMP)
+                      198 Wards GeoJSON Boundaries · Bengaluru
                     </p>
                   </div>
                 </div>
 
                 <div className="text-xs text-gray-400">
-                  Click a marker to inspect details
+                  Click any ward area to inspect
                 </div>
               </div>
 
               {/* Map Component */}
               <div className="flex-1 w-full h-full min-h-[500px]">
                 <Map
-                  wards={filteredWards}
                   selectedWard={selectedWard}
-                  onSelectWard={(ward) => setSelectedWard(ward)}
+                  onSelectWard={handleSelectWard}
                 />
               </div>
             </div>

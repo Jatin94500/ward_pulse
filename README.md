@@ -1,6 +1,5 @@
-# Ward Pulse - Diagrams
+# Ward Pulse 
 
-Mermaid diagrams for the project. They render in GitHub, GitLab, VS Code (Markdown Preview Mermaid Support) and https://mermaid.live.
 
 ## 1. End-to-end pipeline
 

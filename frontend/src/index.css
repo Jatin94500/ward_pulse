@@ -19,3 +19,16 @@
   border-radius: 0.75rem;
   z-index: 10;
 }
+
+/* User-requested Playfair Display & Zeyada font classes */
+.playfair-display {
+  font-family: "Playfair Display", serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+}
+
+.zeyada-regular {
+  font-family: "Zeyada", cursive;
+  font-weight: 400;
+  font-style: normal;
+}

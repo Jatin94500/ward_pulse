@@ -251,6 +251,7 @@ function App() {
           <aside className="w-full lg:w-[30%] flex flex-col gap-4 overflow-y-auto pr-1">
             {/* Filter Component */}
             <Filter
+              wards={BANGALORE_WARDS}
               zones={ALL_ZONES}
               selectedZone={selectedZone}
               onSelectZone={setSelectedZone}
@@ -258,6 +259,7 @@ function App() {
               onToggleZeroHistory={setZeroHistoryOnly}
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
+              onSelectWard={handleSelectWard}
               onReset={handleResetFilters}
             />
 

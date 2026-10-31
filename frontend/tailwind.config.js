@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        playfair: ['"Playfair Display"', 'serif'],
+        zeyada: ['"Zeyada"', 'cursive'],
+      },
       colors: {
         ward: {
           50: '#f0fdf4',

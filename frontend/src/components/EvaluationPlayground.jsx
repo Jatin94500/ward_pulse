@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Database
 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
 
 export default function EvaluationPlayground({ wards = [] }) {
   // Only target zero-history wards
@@ -47,10 +48,10 @@ export default function EvaluationPlayground({ wards = [] }) {
       let res;
       if (activeTab === 'target') {
         res = await fetch(
-          `http://localhost:8000/api/predict?ward_id=${selectedWardId}&category_group=${category}&month=${month}&api_key=${apiKey}`
+          `${API_BASE_URL}/api/predict?ward_id=${selectedWardId}&category_group=${category}&month=${month}&api_key=${apiKey}`
         );
       } else {
-        res = await fetch('http://localhost:8000/api/predict/custom', {
+        res = await fetch(`${API_BASE_URL}/api/predict/custom`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -107,8 +108,8 @@ export default function EvaluationPlayground({ wards = [] }) {
   };
 
   const curlCommand = activeTab === 'target'
-    ? `curl -X GET "http://localhost:8000/api/predict?ward_id=${selectedWardId}&category_group=${category}&month=${month}&api_key=${apiKey}"`
-    : `curl -X POST "http://localhost:8000/api/predict/custom" -H "X-API-Key: ${apiKey}" -H "Content-Type: application/json" -d '{"ward_name":"${customParams.ward_name}","population":${customParams.population},"area_sq_km":${customParams.area_sq_km},"road_length_kms":${customParams.road_length_kms},"streetlights":${customParams.streetlights},"category_group":"${category}"}'`;
+    ? `curl -X GET "${API_BASE_URL}/api/predict?ward_id=${selectedWardId}&category_group=${category}&month=${month}&api_key=${apiKey}"`
+    : `curl -X POST "${API_BASE_URL}/api/predict/custom" -H "X-API-Key: ${apiKey}" -H "Content-Type: application/json" -d '{"ward_name":"${customParams.ward_name}","population":${customParams.population},"area_sq_km":${customParams.area_sq_km},"road_length_kms":${customParams.road_length_kms},"streetlights":${customParams.streetlights},"category_group":"${category}"}'`;
 
   const copyCurl = () => {
     navigator.clipboard.writeText(curlCommand);

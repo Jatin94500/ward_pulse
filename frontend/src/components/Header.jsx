@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Key, Copy, Check, FileCode, Download, ShieldCheck } from 'lucide-react';
+import { API_BASE_URL, API_DOCS_URL } from '../config';
 
 export default function Header() {
   const [copied, setCopied] = useState(false);
@@ -57,7 +58,7 @@ export default function Header() {
 
           {/* Export Evaluation Submission CSV */}
           <a
-            href="http://localhost:8000/api/export/submission"
+            href={`${API_BASE_URL}/api/export/submission`}
             download="ward_pulse_evaluation_submission.csv"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm transition-colors cursor-pointer"
             title="Download official evaluation submission CSV for the 40 zero-history target wards"
@@ -68,14 +69,14 @@ export default function Header() {
 
           {/* Interactive Swagger Docs Link */}
           <a
-            href="http://localhost:8000/docs"
+            href={API_DOCS_URL}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-600 hover:bg-orange-700 text-white shadow-sm transition-colors cursor-pointer"
-            title="Open interactive OpenAPI / Swagger API evaluation docs"
+            title="Open interactive OpenAPI / Swagger API evaluation docs on Render"
           >
             <FileCode className="h-3.5 w-3.5" />
-            <span>Swagger API Docs</span>
+            <span>Live API Docs (Swagger)</span>
           </a>
         </div>
       </div>

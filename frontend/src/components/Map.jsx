@@ -53,7 +53,7 @@ export default function Map({ wards = [], selectedWard, onSelectWard }) {
 
   useEffect(() => {
     // Fetch wards.geojson
-    fetch('/wards.geojson')
+    fetch('/wards.geojson?v=' + Date.now(), { cache: 'no-cache' })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load wards.geojson');
         return res.json();

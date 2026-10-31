@@ -16,7 +16,7 @@ export default function App() {
 
   // Fetch real Bangalore wards dataset with model predictions
   useEffect(() => {
-    fetch('/bangalore_wards_data.json')
+    fetch('/bangalore_wards_data.json?v=' + Date.now(), { cache: 'no-cache' })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load wards data');
         return res.json();

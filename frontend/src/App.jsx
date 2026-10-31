@@ -1,204 +1,69 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import Map from './components/Map';
 import Filter from './components/Filter';
 import Charts from './components/Charts';
-import { Layers, Sparkles } from 'lucide-react';
+import { Layers } from 'lucide-react';
 
-const BANGALORE_WARDS = [
-  {
-    id: 'BBMP-80',
-    wardNo: 80,
-    name: 'Indiranagar',
-    zone: 'East',
-    lat: 12.9784,
-    lng: 77.6408,
-    predictedDemand: 195,
-    confidence: '92%',
-    history: 'Active',
-    roads: 65,
-    garbage: 80,
-    water: 32,
-    streetlights: 18
-  },
-  {
-    id: 'BBMP-151',
-    wardNo: 151,
-    name: 'Koramangala',
-    zone: 'South',
-    lat: 12.9352,
-    lng: 77.6245,
-    predictedDemand: 245,
-    confidence: '95%',
-    history: 'Active',
-    roads: 92,
-    garbage: 95,
-    water: 38,
-    streetlights: 20
-  },
-  {
-    id: 'BBMP-84',
-    wardNo: 84,
-    name: 'Whitefield',
-    zone: 'Mahadevapura',
-    lat: 12.9698,
-    lng: 77.7500,
-    predictedDemand: 312,
-    confidence: '89%',
-    history: 'None (New Expansion)',
-    roads: 125,
-    garbage: 105,
-    water: 54,
-    streetlights: 28
-  },
-  {
-    id: 'BBMP-150',
-    wardNo: 150,
-    name: 'Bellandur',
-    zone: 'Mahadevapura',
-    lat: 12.9260,
-    lng: 77.6762,
-    predictedDemand: 285,
-    confidence: '88%',
-    history: 'None (Unrecorded)',
-    roads: 110,
-    garbage: 98,
-    water: 52,
-    streetlights: 25
-  },
-  {
-    id: 'BBMP-45',
-    wardNo: 45,
-    name: 'Malleshwaram',
-    zone: 'West',
-    lat: 13.0031,
-    lng: 77.5643,
-    predictedDemand: 160,
-    confidence: '96%',
-    history: 'Active',
-    roads: 48,
-    garbage: 62,
-    water: 32,
-    streetlights: 18
-  },
-  {
-    id: 'BBMP-174',
-    wardNo: 174,
-    name: 'HSR Layout',
-    zone: 'Bommanahalli',
-    lat: 12.9121,
-    lng: 77.6446,
-    predictedDemand: 215,
-    confidence: '93%',
-    history: 'Active',
-    roads: 78,
-    garbage: 75,
-    water: 40,
-    streetlights: 22
-  },
-  {
-    id: 'BBMP-153',
-    wardNo: 153,
-    name: 'Jayanagar',
-    zone: 'South',
-    lat: 12.9308,
-    lng: 77.5838,
-    predictedDemand: 170,
-    confidence: '94%',
-    history: 'Active',
-    roads: 55,
-    garbage: 68,
-    water: 28,
-    streetlights: 19
-  },
-  {
-    id: 'BBMP-04',
-    wardNo: 4,
-    name: 'Yelahanka Satellite Town',
-    zone: 'Yelahanka',
-    lat: 13.1007,
-    lng: 77.5963,
-    predictedDemand: 220,
-    confidence: '90%',
-    history: 'None (New Expansion)',
-    roads: 85,
-    garbage: 72,
-    water: 41,
-    streetlights: 22
-  },
-  {
-    id: 'BBMP-108',
-    wardNo: 108,
-    name: 'Rajajinagar',
-    zone: 'West',
-    lat: 12.9982,
-    lng: 77.5530,
-    predictedDemand: 175,
-    confidence: '93%',
-    history: 'Active',
-    roads: 54,
-    garbage: 70,
-    water: 31,
-    streetlights: 20
-  },
-  {
-    id: 'BBMP-192',
-    wardNo: 192,
-    name: 'Electronic City Corridor',
-    zone: 'South Outskirts',
-    lat: 12.8399,
-    lng: 77.6770,
-    predictedDemand: 265,
-    confidence: '87%',
-    history: 'None (Unrecorded)',
-    roads: 105,
-    garbage: 85,
-    water: 48,
-    streetlights: 27
-  },
-];
-
-const ALL_ZONES = ['East', 'South', 'West', 'Mahadevapura', 'Bommanahalli', 'Yelahanka'];
-
-function App() {
-  const [selectedWard, setSelectedWard] = useState({
-    ...BANGALORE_WARDS[2],
-    ward_id: BANGALORE_WARDS[2].wardNo
-  });
+export default function App() {
+  const [allWards, setAllWards] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedWard, setSelectedWard] = useState(null);
   const [selectedZone, setSelectedZone] = useState('All');
   const [zeroHistoryOnly, setZeroHistoryOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleSelectWard = (ward) => {
-    const matched = BANGALORE_WARDS.find(w => w.wardNo === ward.ward_id || w.id === ward.id);
-    if (matched) {
-      setSelectedWard({ ...matched, ward_id: matched.wardNo });
-    } else {
-      setSelectedWard({
-        id: `BBMP-${ward.ward_id}`,
-        ward_id: ward.ward_id,
-        name: `BBMP Ward #${ward.ward_id}`,
-        zone: 'BBMP Jurisdiction',
-        predictedDemand: 185,
-        roads: 55,
-        garbage: 70,
-        water: 35,
-        streetlights: 20,
-        history: 'None (Unrecorded)'
+  // Fetch real Bangalore wards dataset with model predictions
+  useEffect(() => {
+    fetch('/bangalore_wards_data.json')
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load wards data');
+        return res.json();
+      })
+      .then((data) => {
+        setAllWards(data);
+        // Default to first zero-history target ward (e.g. Ward 5 - Jakkuru)
+        const defaultWard = data.find((w) => !w.has_history) || data[0];
+        setSelectedWard(defaultWard);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('Error loading Bangalore wards data:', err);
+        setLoading(false);
       });
-    }
-  };
+  }, []);
 
-  // Filtered wards based on search, zone, and zero-history
+  // Extract all unique real BBMP zones
+  const zones = useMemo(() => {
+    const set = new Set();
+    allWards.forEach((w) => {
+      if (w.zone) set.add(w.zone);
+    });
+    return Array.from(set).sort();
+  }, [allWards]);
+
+  // Filtered wards based on search, zone, and zero-history toggle
   const filteredWards = useMemo(() => {
-    return BANGALORE_WARDS.filter((ward) => {
-      const matchesSearch = ward.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        ward.zone.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = (searchQuery || '').trim().toLowerCase();
+    return allWards.filter((ward) => {
+      const matchesSearch = 
+        !q ||
+        ward.name.toLowerCase().includes(q) ||
+        (ward.zone && ward.zone.toLowerCase().includes(q)) ||
+        String(ward.ward_id).includes(q);
+
       const matchesZone = selectedZone === 'All' || ward.zone === selectedZone;
-      const matchesHistory = !zeroHistoryOnly || ward.history.includes('None');
+      const matchesHistory = !zeroHistoryOnly || !ward.has_history;
+
       return matchesSearch && matchesZone && matchesHistory;
     });
-  }, [searchQuery, selectedZone, zeroHistoryOnly]);
+  }, [allWards, searchQuery, selectedZone, zeroHistoryOnly]);
+
+  const handleSelectWard = (ward) => {
+    // If partial object passed, find full ward from allWards
+    const fullWard = allWards.find((w) => w.ward_id === ward.ward_id) || ward;
+    setSelectedWard(fullWard);
+  };
 
   const handleResetFilters = () => {
     setSelectedZone('All');
@@ -208,13 +73,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-gray-900">
-      {/* Space for Header at the Top */}
+      {/* Header with requested Playfair Display & Zeyada fonts */}
       <Header />
 
       {/* Main 70% Left / 30% Right Layout */}
       <main className="flex-1 max-w-[1700px] w-full mx-auto p-4 md:p-6">
         <div className="flex flex-col lg:flex-row gap-6 items-stretch h-[calc(100vh-120px)] min-h-[700px]">
-
+          
           {/* Left Side: 70% Card with Bangalore Map */}
           <section className="w-full lg:w-[70%] flex flex-col">
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex flex-col h-full">
@@ -227,19 +92,22 @@ function App() {
                   <div>
                     <h2 className="text-base font-bold text-gray-900 m-0">Bangalore BBMP Wards Map</h2>
                     <p className="text-xs text-gray-500">
-                      198 Wards GeoJSON Boundaries · Bengaluru
+                      {loading 
+                        ? 'Loading 198 wards...' 
+                        : `Showing ${filteredWards.length} of ${allWards.length} BBMP Wards (${allWards.filter(w => !w.has_history).length} Target Zero-History)`}
                     </p>
                   </div>
                 </div>
 
-                <div className="text-xs text-gray-400">
-                  Click any ward area to inspect
+                <div className="text-xs text-gray-400 hidden sm:block">
+                  Click any ward area on map to inspect
                 </div>
               </div>
 
               {/* Map Component */}
               <div className="flex-1 w-full h-full min-h-[500px]">
                 <Map
+                  wards={allWards}
                   selectedWard={selectedWard}
                   onSelectWard={handleSelectWard}
                 />
@@ -247,12 +115,12 @@ function App() {
             </div>
           </section>
 
-          {/* Right Side: 30% Column for other things (Filters, Charts, and custom modules) */}
+          {/* Right Side: 30% Column */}
           <aside className="w-full lg:w-[30%] flex flex-col gap-4 overflow-y-auto pr-1">
-            {/* Filter Component */}
+            {/* Filter Component with dynamic suggestions */}
             <Filter
-              wards={BANGALORE_WARDS}
-              zones={ALL_ZONES}
+              wards={allWards}
+              zones={zones}
               selectedZone={selectedZone}
               onSelectZone={setSelectedZone}
               zeroHistoryOnly={zeroHistoryOnly}
@@ -263,12 +131,12 @@ function App() {
               onReset={handleResetFilters}
             />
 
-            {/* Charts Component */}
+            {/* Charts Component with the 6 real categories */}
             <Charts
               wards={filteredWards}
               selectedWard={selectedWard}
+              onSelectWard={handleSelectWard}
             />
-
           </aside>
 
         </div>
@@ -276,5 +144,3 @@ function App() {
     </div>
   );
 }
-
-export default App;

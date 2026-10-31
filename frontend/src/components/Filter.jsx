@@ -74,14 +74,18 @@ export default function Filter({
           <Search className="h-3.5 w-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
+            name="ward-search-query"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck="false"
             value={searchQuery || ''}
             onChange={(e) => {
               if (onSearchChange) onSearchChange(e.target.value);
               setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
-            placeholder="Type ward name, zone, or #..."
-            className="w-full text-xs pl-8 pr-7 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+            placeholder="Search BBMP ward name, zone, or #..."
+            className="w-full text-xs pl-8 pr-7 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 bg-white"
           />
           {searchQuery && (
             <button

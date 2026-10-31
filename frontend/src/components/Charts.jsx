@@ -1,21 +1,29 @@
 import React from 'react';
-import { BarChart3, PieChart, TrendingUp } from 'lucide-react';
+import { BarChart3, PieChart, Zap, Trash2, Car, Trees, HeartPulse, HelpCircle } from 'lucide-react';
 
-export default function Charts({ wards = [], selectedWard }) {
-  // Take top 5 wards by demand
+export default function Charts({ wards = [], selectedWard, onSelectWard }) {
+  // Sort wards by demand
   const topWards = [...wards]
-    .sort((a, b) => (b.predictedDemand || 0) - (a.predictedDemand || 0))
+    .sort((a, b) => (b.predictedDemand || b.totalDemand || 0) - (a.predictedDemand || a.totalDemand || 0))
     .slice(0, 5);
 
-  const maxDemand = topWards.length > 0 ? Math.max(...topWards.map(w => w.predictedDemand || 1)) : 100;
+  const maxDemand = topWards.length > 0 
+    ? Math.max(...topWards.map(w => w.predictedDemand || w.totalDemand || 1)) 
+    : 100;
 
   // Selected ward breakdown
-  const current = selectedWard || wards[0] || { roads: 60, garbage: 75, water: 40, streetlights: 20, predictedDemand: 195 };
+  const current = selectedWard || wards[0] || { name: 'Select a ward', predictedDemand: 0, breakdown: {} };
+  const b = current.breakdown || {};
+  const total = current.totalDemand || current.predictedDemand || Object.values(b).reduce((acc, v) => acc + (Number(v) || 0), 0) || 1;
+
+  // Actual Hackathon Problem 03 Complaint Categories
   const categories = [
-    { label: 'Roads & Potholes', count: current.roads || 50, color: 'bg-blue-500' },
-    { label: 'Solid Waste & Garbage', count: current.garbage || 65, color: 'bg-emerald-500' },
-    { label: 'BWSSB Water & Drainage', count: current.water || 35, color: 'bg-cyan-500' },
-    { label: 'BESCOM Streetlights', count: current.streetlights || 20, color: 'bg-amber-500' },
+    { label: 'Solid Waste', key: 'solid_waste', count: b.solid_waste || 0, color: 'bg-emerald-500', icon: Trash2 },
+    { label: 'Electrical', key: 'electrical', count: b.electrical || 0, color: 'bg-amber-500', icon: Zap },
+    { label: 'Roads', key: 'roads', count: b.roads || 0, color: 'bg-blue-500', icon: Car },
+    { label: 'Trees', key: 'trees', count: b.trees || 0, color: 'bg-green-600', icon: Trees },
+    { label: 'Animal Health', key: 'animals_health', count: b.animals_health || 0, color: 'bg-rose-500', icon: HeartPulse },
+    { label: 'Other Issues', key: 'other', count: b.other || 0, color: 'bg-purple-500', icon: HelpCircle },
   ];
 
   return (
@@ -25,33 +33,41 @@ export default function Charts({ wards = [], selectedWard }) {
         <div className="flex items-center justify-between border-b border-gray-100 pb-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
             <BarChart3 className="h-4 w-4 text-orange-600" />
-            <span>Demand by Ward</span>
+            <span>Demand Ranking</span>
           </div>
-          <span className="text-[11px] text-gray-400">Monthly Est.</span>
+          <span className="text-[10px] text-gray-400">Monthly Est.</span>
         </div>
 
         <div className="space-y-2 pt-1">
           {topWards.map((w) => {
-            const isSelected = selectedWard?.id === w.id;
-            const pct = Math.round(((w.predictedDemand || 0) / maxDemand) * 100);
+            const isSelected = selectedWard?.ward_id === w.ward_id || selectedWard?.id === w.id;
+            const demand = w.predictedDemand || Math.round(w.totalDemand || 0);
+            const pct = Math.round((demand / maxDemand) * 100);
 
             return (
-              <div key={w.id} className="text-xs">
+              <button
+                key={w.ward_id || w.id}
+                type="button"
+                onClick={() => onSelectWard && onSelectWard(w)}
+                className={`w-full text-left text-xs p-1 rounded-lg transition-colors ${
+                  isSelected ? 'bg-orange-50/80 ring-1 ring-orange-400' : 'hover:bg-gray-50'
+                }`}
+              >
                 <div className="flex justify-between items-center mb-1">
-                  <span className={`font-medium truncate ${isSelected ? 'text-orange-600 font-bold' : 'text-gray-700'}`}>
-                    {w.name}
+                  <span className={`truncate ${isSelected ? 'text-orange-600 font-bold' : 'text-gray-700 font-medium'}`}>
+                    {w.name} <span className="text-[10px] text-gray-400">({w.zone})</span>
                   </span>
-                  <span className="font-mono text-gray-900 font-semibold">{w.predictedDemand}</span>
+                  <span className="font-mono text-gray-900 font-semibold text-[11px] ml-1">{demand}</span>
                 </div>
-                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                   <div
-                    className={`h-2 rounded-full transition-all duration-500 ${
+                    className={`h-1.5 rounded-full transition-all duration-500 ${
                       isSelected ? 'bg-orange-600' : 'bg-gray-400'
                     }`}
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${Math.max(pct, 5)}%` }}
                   />
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -64,22 +80,36 @@ export default function Charts({ wards = [], selectedWard }) {
             <PieChart className="h-4 w-4 text-orange-600" />
             <span>Category Distribution</span>
           </div>
-          <span className="text-[11px] text-gray-500 font-medium truncate max-w-[100px]">{current.name || 'Selected'}</span>
+          <span className="text-[11px] text-gray-700 font-bold truncate max-w-[130px]">
+            {current.name}
+          </span>
+        </div>
+
+        {/* Total & Status Bar */}
+        <div className="flex items-center justify-between text-xs px-2 py-1.5 bg-gray-50 rounded-lg">
+          <span className="text-gray-500">Total Predicted Complaints:</span>
+          <span className="font-bold text-orange-600 font-mono text-sm">{Math.round(total)}</span>
         </div>
 
         <div className="space-y-2 pt-1">
           {categories.map((cat) => {
-            const total = current.predictedDemand || 1;
-            const pct = Math.round((cat.count / total) * 100);
+            const count = Math.round(Number(cat.count) * 10) / 10;
+            const pct = Math.round((count / total) * 100) || 0;
+            const Icon = cat.icon;
 
             return (
               <div key={cat.label} className="text-xs">
-                <div className="flex justify-between text-gray-600 mb-1">
-                  <span className="truncate">{cat.label}</span>
-                  <span className="font-semibold text-gray-800">{cat.count} ({pct}%)</span>
+                <div className="flex justify-between items-center text-gray-600 mb-1">
+                  <span className="flex items-center gap-1.5">
+                    <Icon className="h-3 w-3 text-gray-400" />
+                    <span>{cat.label}</span>
+                  </span>
+                  <span className="font-semibold text-gray-800 font-mono">
+                    {count} <span className="text-[10px] text-gray-400 font-normal">({pct}%)</span>
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-1.5 rounded-full ${cat.color}`} style={{ width: `${pct}%` }} />
+                  <div className={`h-1.5 rounded-full ${cat.color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                 </div>
               </div>
             );

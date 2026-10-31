@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMap } from 'react-leaflet';
 
 // Bangalore (Bengaluru) coordinates
@@ -10,7 +10,7 @@ const BANGALORE_BOUNDS = [
   [13.2200, 77.8500]  // Northeast coordinate
 ];
 
-function MapController({ geojsonData, selectedWard }) {
+function MapController({ selectedWard, geoData }) {
   const map = useMap();
 
   useEffect(() => {
@@ -18,15 +18,41 @@ function MapController({ geojsonData, selectedWard }) {
     map.setMinZoom(10);
   }, [map]);
 
+  // When a ward is selected, if its bounds or feature exists, fly smoothly to it
+  useEffect(() => {
+    if (!selectedWard || !geoData) return;
+    const targetFeature = geoData.features?.find(
+      (f) => f.properties?.ward_id === selectedWard.ward_id
+    );
+    if (targetFeature && window.L) {
+      try {
+        const layer = window.L.geoJSON(targetFeature);
+        const bounds = layer.getBounds();
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { maxZoom: 14, duration: 0.8 });
+        }
+      } catch (e) {
+        // Fallback silently if bounds calculation fails
+      }
+    }
+  }, [selectedWard, geoData, map]);
+
   return null;
 }
 
-export default function Map({ selectedWard, onSelectWard }) {
+export default function Map({ wards = [], selectedWard, onSelectWard }) {
   const [geoData, setGeoData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Map of ward_id -> ward object for instant lookup
+  const wardMap = React.useMemo(() => {
+    const map = new Map();
+    wards.forEach((w) => map.set(w.ward_id, w));
+    return map;
+  }, [wards]);
+
   useEffect(() => {
-    // Fetch wards.geojson from the public directory
+    // Fetch wards.geojson
     fetch('/wards.geojson')
       .then((res) => {
         if (!res.ok) throw new Error('Failed to load wards.geojson');
@@ -42,28 +68,66 @@ export default function Map({ selectedWard, onSelectWard }) {
       });
   }, []);
 
-  // Styling for ward polygons: light elegant color, thin borders
+  // Styling for ward polygons
   const wardStyle = (feature) => {
-    const isSelected = selectedWard?.ward_id === feature.properties.ward_id;
+    const wardId = feature.properties.ward_id;
+    const isSelected = selectedWard?.ward_id === wardId;
+    const wardInfo = wardMap.get(wardId);
+    const isZeroHistory = wardInfo ? !wardInfo.has_history : false;
+
+    // Distinct styling for zero-history target wards vs historical wards
+    let fillColor = '#38bdf8'; // Soft sky blue default
+    let borderColor = '#0284c7';
+
+    if (isZeroHistory) {
+      fillColor = '#fbbf24'; // Warm amber for zero-history wards
+      borderColor = '#d97706';
+    }
+
+    if (isSelected) {
+      fillColor = '#f97316'; // Bright orange for selected ward
+      borderColor = '#c2410c';
+    }
+
     return {
-      fillColor: isSelected ? '#f97316' : '#38bdf8', // Soft sky blue or orange when selected
-      fillOpacity: isSelected ? 0.45 : 0.16,         // Light transparent color to highlight area
-      color: isSelected ? '#ea580c' : '#0284c7',       // Thin border
+      fillColor,
+      fillOpacity: isSelected ? 0.55 : (isZeroHistory ? 0.28 : 0.16),
+      color: borderColor,
       weight: isSelected ? 2.5 : 1,
-      dashArray: isSelected ? '' : '1',
+      dashArray: isSelected ? '' : (isZeroHistory ? '3 3' : '1'),
     };
   };
 
   // Interactions per ward polygon (tooltip & click)
   const onEachWard = (feature, layer) => {
     const wardId = feature.properties.ward_id;
+    const wardInfo = wardMap.get(wardId) || {
+      name: `Ward ${wardId}`,
+      zone: 'BBMP',
+      predictedDemand: 0,
+      has_history: true
+    };
     
     layer.bindTooltip(
-      `<div><span class="font-bold text-gray-900">BBMP Ward #${wardId}</span></div>`,
+      `
+      <div style="font-family: inherit; font-size: 11px;">
+        <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">
+          #${wardId} ${wardInfo.name}
+        </div>
+        <div style="color: #64748b; font-size: 10px;">
+          ${wardInfo.zone} Zone · <span style="font-weight: 600; color: ${wardInfo.has_history ? '#16a34a' : '#d97706'}">
+            ${wardInfo.has_history ? 'Historical' : 'Zero History'}
+          </span>
+        </div>
+        <div style="margin-top: 3px; font-weight: 700; color: #ea580c;">
+          Est. Demand: ${wardInfo.predictedDemand || Math.round(wardInfo.totalDemand || 0)} req
+        </div>
+      </div>
+      `,
       {
         sticky: true,
         direction: 'top',
-        className: 'bg-white px-2 py-1 rounded shadow-md border border-gray-200 text-xs font-sans',
+        className: 'bg-white px-2.5 py-1.5 rounded-lg shadow-lg border border-gray-200 text-xs font-sans',
       }
     );
 
@@ -71,24 +135,37 @@ export default function Map({ selectedWard, onSelectWard }) {
       mouseover: (e) => {
         const l = e.target;
         l.setStyle({
-          fillOpacity: 0.4,
+          fillOpacity: 0.5,
           weight: 2,
-          color: '#0284c7',
         });
       },
       mouseout: (e) => {
         const l = e.target;
         const isSelected = selectedWard?.ward_id === wardId;
+        const wardInfo = wardMap.get(wardId);
+        const isZeroHistory = wardInfo ? !wardInfo.has_history : false;
+
+        let fillColor = '#38bdf8';
+        let borderColor = '#0284c7';
+        if (isZeroHistory) {
+          fillColor = '#fbbf24';
+          borderColor = '#d97706';
+        }
+        if (isSelected) {
+          fillColor = '#f97316';
+          borderColor = '#c2410c';
+        }
+
         l.setStyle({
-          fillColor: isSelected ? '#f97316' : '#38bdf8',
-          fillOpacity: isSelected ? 0.45 : 0.16,
-          color: isSelected ? '#ea580c' : '#0284c7',
+          fillColor,
+          fillOpacity: isSelected ? 0.55 : (isZeroHistory ? 0.28 : 0.16),
+          color: borderColor,
           weight: isSelected ? 2.5 : 1,
         });
       },
       click: () => {
         if (onSelectWard) {
-          onSelectWard({ ward_id: wardId, name: `BBMP Ward #${wardId}` });
+          onSelectWard(wardInfo);
         }
       },
     });
@@ -115,7 +192,7 @@ export default function Map({ selectedWard, onSelectWard }) {
         scrollWheelZoom={true}
         className="w-full h-full"
       >
-        <MapController geojsonData={geoData} selectedWard={selectedWard} />
+        <MapController geoData={geoData} selectedWard={selectedWard} />
 
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -133,10 +210,23 @@ export default function Map({ selectedWard, onSelectWard }) {
         )}
       </MapContainer>
 
-      {/* Floating Bangalore Lock Badge */}
-      <div className="absolute top-3 left-3 z-[400] bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-medium text-gray-700 shadow-sm flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-        <span>Bangalore BBMP: <strong>198 Wards Polygons</strong></span>
+      {/* Floating Bangalore Legend */}
+      <div className="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-sm px-3 py-2 rounded-xl border border-gray-200 text-[11px] font-medium text-gray-700 shadow-sm space-y-1">
+        <div className="font-semibold text-gray-900 border-b border-gray-100 pb-1 text-[10px] uppercase tracking-wider">
+          BBMP 198 Wards
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-amber-400 border border-amber-500 inline-block"></span>
+          <span>Zero-History Wards (40 Target Wards)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-sky-400 border border-sky-500 inline-block"></span>
+          <span>Historical Complaint Wards (156)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded bg-orange-500 border border-orange-600 inline-block"></span>
+          <span>Selected Active Ward</span>
+        </div>
       </div>
     </div>
   );

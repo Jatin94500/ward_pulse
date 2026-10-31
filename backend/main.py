@@ -1,10 +1,11 @@
 import time
 from fastapi import FastAPI, Depends, Query, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from typing import List, Optional
 
-from backend.config import API_KEY, API_KEY_NAME
+from backend.config import API_KEY, API_KEY_NAME, SUBMISSION_PATH
 from backend.auth import verify_api_key
 from backend.schemas import (
     PredictionRow,
@@ -46,6 +47,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Gzip compression for high-performance payload delivery
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 @app.get("/", include_in_schema=False)
 def root():
     """Redirect root directly to interactive Swagger docs"""
@@ -60,6 +64,17 @@ def health_check():
         "wards_count": len(model_service.ward_features) if model_service.ward_features is not None else 0,
         "api_key_configured": bool(API_KEY),
     }
+
+@app.get("/api/export/submission", tags=["Evaluation"])
+def export_submission_file():
+    """Download the official Hackathon Problem 03 CSV evaluation file for the 40 zero-history target wards"""
+    if SUBMISSION_PATH.exists():
+        return FileResponse(
+            path=str(SUBMISSION_PATH),
+            filename="ward_pulse_evaluation_submission.csv",
+            media_type="text/csv"
+        )
+    raise HTTPException(status_code=404, detail="Submission file not found.")
 
 @app.get("/api/meta", response_model=MetaResponse, tags=["Metadata"])
 def get_metadata():

@@ -4,6 +4,7 @@ import Map from './components/Map';
 import Filter from './components/Filter';
 import Charts from './components/Charts';
 import WardStats from './components/WardStats';
+import EvaluationPlayground from './components/EvaluationPlayground';
 import { Layers } from 'lucide-react';
 
 export default function App() {
@@ -142,12 +143,15 @@ export default function App() {
 
         </div>
 
-        {/* New Section: Statistical Data of Particular Selected Ward */}
+        {/* Section: Statistical Data of Particular Selected Ward */}
         <WardStats
           wards={allWards}
           selectedWard={selectedWard}
           onSelectWard={handleSelectWard}
         />
+
+        {/* Production & Evaluation Section: Live AI Inference Playground */}
+        <EvaluationPlayground wards={allWards} />
       </main>
     </div>
   );

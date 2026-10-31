@@ -40,15 +40,21 @@ function MapController({ selectedWard, geoData }) {
   return null;
 }
 
-export default function Map({ wards = [], selectedWard, onSelectWard }) {
+export default function WardMap({ wards = [], selectedWard, onSelectWard }) {
   const [geoData, setGeoData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Map of ward_id -> ward object for instant lookup
+  // Map of ward_id -> ward object for instant lookup using global window.Map
   const wardMap = React.useMemo(() => {
-    const map = new Map();
-    wards.forEach((w) => map.set(w.ward_id, w));
-    return map;
+    const lookup = typeof window !== 'undefined' && window.Map ? new window.Map() : new globalThis.Map();
+    if (Array.isArray(wards)) {
+      wards.forEach((w) => {
+        if (w && w.ward_id) {
+          lookup.set(w.ward_id, w);
+        }
+      });
+    }
+    return lookup;
   }, [wards]);
 
   useEffect(() => {

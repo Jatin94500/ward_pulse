@@ -20,10 +20,12 @@
   z-index: 10;
 }
 
-/* User-requested Playfair Display & Zeyada font classes */
-.playfair-display {
+/* User-requested Google Fonts: Playfair Display & Zeyada */
+.playfair-display,
+.playfair-display-title {
   font-family: "Playfair Display", serif;
   font-optical-sizing: auto;
+  font-weight: 700;
   font-style: normal;
 }
 

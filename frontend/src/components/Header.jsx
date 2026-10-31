@@ -9,8 +9,17 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <div>
             <div className="flex items-baseline gap-2">
-              <h1 className="playfair-display text-2xl md:text-3xl font-bold tracking-tight text-gray-900 m-0">
-                Ward <span className="zeyada-regular text-3xl md:text-4xl text-orange-600 font-normal ml-1">Pulse</span>
+              <h1 
+                className="playfair-display-title playfair-display text-2xl md:text-3xl font-bold tracking-tight text-gray-900 m-0"
+                style={{ fontFamily: '"Playfair Display", Georgia, serif' }}
+              >
+                Ward{' '}
+                <span 
+                  className="zeyada-regular text-3xl md:text-4xl text-orange-600 font-normal ml-1 inline-block"
+                  style={{ fontFamily: '"Zeyada", cursive' }}
+                >
+                  Pulse
+                </span>
               </h1>
             </div>
           </div>
